@@ -1,0 +1,7 @@
+minimumReleaseAgeExclude:
+  - lucide-react@1.71.0
+  - vite@7.3.8
+
+allowBuilds:
+  electron-winstaller: true
+  esbuild: true
