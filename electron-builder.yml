@@ -6,6 +6,8 @@ directories:
   output: release
   buildResources: build
 
+afterPack: ./scripts/afterPack.cjs
+
 files:
   - out/**/*
   - package.json
@@ -13,8 +15,9 @@ files:
 npmRebuild: false
 
 mac:
-  # 无开发者证书：跳过签名（产物为未签名版本）
+  # 无开发者证书：electron-builder 跳过签名，由 afterPack 补 ad-hoc 签名
   identity: null
+  icon: build/icon.icns
   category: public.app-category.developer-tools
   darkModeSupport: true
   target:

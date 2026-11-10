@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="body" x1="100" y1="100" x2="924" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1d242e"/>
+      <stop offset="0.5" stop-color="#11161d"/>
+      <stop offset="1" stop-color="#080a0e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="283" x2="0" y2="694" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbe6ae"/>
+      <stop offset="0.3" stop-color="#f2ca85"/>
+      <stop offset="0.66" stop-color="#e3b05f"/>
+      <stop offset="1" stop-color="#cd9340"/>
+    </linearGradient>
+    <linearGradient id="highlight" x1="0" y1="283" x2="0" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="560" x2="0" y2="694" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7a4a14" stop-opacity="0"/>
+      <stop offset="1" stop-color="#7a4a14" stop-opacity="0.22"/>
+    </linearGradient>
+    <linearGradient id="gem" x1="0" y1="600" x2="0" y2="676" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf2"/>
+      <stop offset="1" stop-color="#f3c97f"/>
+    </linearGradient>
+    <radialGradient id="sphere" cx="0.36" cy="0.3" r="0.72">
+      <stop offset="0" stop-color="#fffbe8" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#fffbe8" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#6b4312" stop-opacity="0.3"/>
+    </radialGradient>
+    <linearGradient id="bandShadow" x1="0" y1="582" x2="0" y2="612" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="488" r="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e6b45c" stop-opacity="0.24"/>
+      <stop offset="0.5" stop-color="#e6b45c" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#e6b45c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="100" y1="100" x2="100" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="180" y="230" width="664" height="590" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="contact" x="240" y="540" width="544" height="180" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <clipPath id="crownClip">
+      <path d="M 272 572 L 272 417 L 405 487 L 512 317 L 619 487 L 752 417 L 752 572 Z"/>
+      <circle cx="272" cy="417" r="34"/>
+      <circle cx="512" cy="317" r="34"/>
+      <circle cx="752" cy="417" r="34"/>
+      <rect x="256" y="582" width="512" height="112" rx="48"/>
+    </clipPath>
+    <clipPath id="bandClip">
+      <rect x="256" y="582" width="512" height="112" rx="48"/>
+    </clipPath>
+  </defs>
+
+  <!-- squircle body -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#glow)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184.5" fill="none" stroke="#ffffff" stroke-opacity="0.1"/>
+
+  <!-- crown shadow -->
+  <g filter="url(#soft)" opacity="0.5">
+    <path d="M 272 580 L 272 425 L 405 495 L 512 325 L 619 495 L 752 425 L 752 580 Z" fill="#000000"/>
+    <rect x="256" y="590" width="512" height="112" rx="48" fill="#000000"/>
+  </g>
+
+  <!-- crown body -->
+  <g fill="url(#gold)">
+    <path d="M 272 572 L 272 417 L 405 487 L 512 317 L 619 487 L 752 417 L 752 572 Z"/>
+    <circle cx="272" cy="417" r="34"/>
+    <circle cx="512" cy="317" r="34"/>
+    <circle cx="752" cy="417" r="34"/>
+    <rect x="256" y="582" width="512" height="112" rx="48"/>
+  </g>
+
+  <!-- metal light, shade, sphere tips -->
+  <g clip-path="url(#crownClip)">
+    <rect x="238" y="275" width="548" height="425" fill="url(#highlight)"/>
+    <rect x="238" y="525" width="548" height="177" fill="url(#shade)"/>
+    <circle cx="272" cy="417" r="34" fill="url(#sphere)"/>
+    <circle cx="512" cy="317" r="34" fill="url(#sphere)"/>
+    <circle cx="752" cy="417" r="34" fill="url(#sphere)"/>
+
+    <!-- recessed band top -->
+    <rect x="256" y="582" width="512" height="30" fill="url(#bandShadow)"/>
+  </g>
+
+  <!-- contact shadow from the crown body onto the band -->
+  <g clip-path="url(#bandClip)">
+    <g filter="url(#contact)" opacity="0.5">
+      <path d="M 272 572 L 272 417 L 405 487 L 512 317 L 619 487 L 752 417 L 752 572 Z" transform="translate(0 10)" fill="#000000"/>
+    </g>
+  </g>
+
+  <!-- crown jewel -->
+  <g>
+    <polygon points="512,600 550,638 512,676 474,638" fill="url(#gem)"/>
+    <polygon points="512,600 474,638 512,676" fill="#ffffff" fill-opacity="0.38"/>
+    <polygon points="512,600 550,638 512,676" fill="#a06a1e" fill-opacity="0.22"/>
+    <polygon points="512,600 550,638 512,638 474,638" fill="#ffffff" fill-opacity="0.75"/>
+    <circle cx="501" cy="621" r="4.5" fill="#ffffff" fill-opacity="0.9"/>
+  </g>
+
+  <!-- top sheen -->
+  <rect x="100" y="100" width="824" height="420" rx="185" fill="url(#sheen)"/>
+</svg>
