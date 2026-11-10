@@ -1,0 +1,36 @@
+appId: com.a1ether.chief
+productName: Chief
+copyright: Copyright © 2026 A1ether
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+
+npmRebuild: false
+
+mac:
+  # 无开发者证书：跳过签名（产物为未签名版本）
+  identity: null
+  category: public.app-category.developer-tools
+  darkModeSupport: true
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  extendInfo:
+    LSMinimumSystemVersion: '12.0'
+    NSHumanReadableCopyright: Copyright © 2026 A1ether
+
+dmg:
+  title: Chief ${version}
+
+artifactName: ${productName}-${version}-${arch}.${ext}

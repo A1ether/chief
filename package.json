@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "dist": "electron-vite build && electron-builder --mac",
     "preview": "electron-vite preview",
     "lint": "tsc --noEmit",
     "core:scan": "tsx scripts/scan.ts"
