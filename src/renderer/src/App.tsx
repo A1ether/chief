@@ -31,16 +31,20 @@ type Filter = 'all' | 'updates'
 
 interface LogLine {
   id: number
+  manager: ManagerId
   stream: TaskEvent['stream']
   text: string
   at: number
 }
 
-interface TaskView {
+interface TaskRun {
+  taskId?: string
   label: string
+  manager: ManagerId
   running: boolean
   ok?: boolean
   message?: string
+  startedAt: number
 }
 
 interface ConfirmState {
@@ -100,12 +104,14 @@ export default function App(): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [logs, setLogs] = useState<LogLine[]>([])
   const [logsOpen, setLogsOpen] = useState(false)
-  const [task, setTask] = useState<TaskView | null>(null)
+  const [tasks, setTasks] = useState<Partial<Record<ManagerId, TaskRun>>>({})
+  const [refreshPending, setRefreshPending] = useState(0)
   const [confirm, setConfirm] = useState<ConfirmState | null>(null)
 
   const logId = useRef(0)
   const logEnd = useRef<HTMLDivElement>(null)
   const didInit = useRef(false)
+  const busyManagers = useRef<Set<ManagerId>>(new Set())
 
   const refresh = useCallback(async (quiet = false): Promise<void> => {
     if (!window.chief) {
@@ -140,7 +146,13 @@ export default function App(): React.JSX.Element {
       setLogs((previous) => {
         const next = [
           ...previous,
-          { id: ++logId.current, stream: event.stream, text: event.text, at: event.at }
+          {
+            id: ++logId.current,
+            manager: event.manager,
+            stream: event.stream,
+            text: event.text,
+            at: event.at
+          }
         ]
         return next.slice(-300)
       })
@@ -162,6 +174,14 @@ export default function App(): React.JSX.Element {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [confirm])
+
+  useEffect(() => {
+    const running = Object.values(tasks).some((run) => run?.running)
+    if (running || refreshPending === 0) return
+
+    setRefreshPending(0)
+    void refresh(true)
+  }, [refresh, refreshPending, tasks])
 
   const managers = useMemo(() => scan?.managers ?? [], [scan])
   const detected = useMemo(() => managers.filter((item) => item.manager.detected), [managers])
@@ -217,67 +237,113 @@ export default function App(): React.JSX.Element {
     )
   }, [managers, selectedSnapshot])
 
-  const busy = task?.running ?? false
   const scopeUpdates = selectedSnapshot
     ? selectedSnapshot.packages.filter((item) => item.outdated).length
     : updates.length
 
-  const runSingle = async (request: TaskRequest, label: string): Promise<void> => {
-    setConfirm(null)
-    if (!window.chief) return
+  const isManagerBusy = (manager: ManagerId): boolean => tasks[manager]?.running === true
+  const anyBusy = useMemo(() => Object.values(tasks).some((run) => run?.running), [tasks])
+  const runningTasks = useMemo(
+    () => Object.values(tasks).filter((run): run is TaskRun => Boolean(run?.running)),
+    [tasks]
+  )
+  const finishedTasks = useMemo(
+    () =>
+      Object.values(tasks)
+        .filter((run): run is TaskRun => Boolean(run && !run.running))
+        .sort((a, b) => b.startedAt - a.startedAt),
+    [tasks]
+  )
+  const availableUpdateTargets = useMemo(
+    () => updateTargets.filter((target) => !tasks[target.manager.id]?.running),
+    [tasks, updateTargets]
+  )
 
-    setLogs([])
+  const managerLabel = (manager: ManagerId): string =>
+    managers.find((snapshot) => snapshot.manager.id === manager)?.manager.name ?? manager
+
+  const runTaskForManager = async (request: TaskRequest, label: string): Promise<void> => {
+    if (!window.chief || busyManagers.current.has(request.manager)) return
+
+    busyManagers.current.add(request.manager)
+    const startedAt = Date.now()
+
+    setTasks((previous) => ({
+      ...previous,
+      [request.manager]: {
+        label,
+        manager: request.manager,
+        running: true,
+        startedAt
+      }
+    }))
     setLogsOpen(true)
-    setTask({ label, running: true })
 
     try {
       const result = await window.chief.task(request)
-      setTask({ label, running: false, ok: result.ok, message: result.message })
-      await refresh(true)
+      setTasks((previous) => ({
+        ...previous,
+        [request.manager]: {
+          taskId: result.taskId,
+          label,
+          manager: request.manager,
+          running: false,
+          ok: result.ok,
+          message: result.message,
+          startedAt: previous[request.manager]?.startedAt ?? startedAt
+        }
+      }))
     } catch (caught) {
       const message = errorText(caught)
-      setTask({ label, running: false, ok: false, message })
+      setTasks((previous) => ({
+        ...previous,
+        [request.manager]: {
+          label,
+          manager: request.manager,
+          running: false,
+          ok: false,
+          message,
+          startedAt: previous[request.manager]?.startedAt ?? startedAt
+        }
+      }))
       setError(message)
+    } finally {
+      busyManagers.current.delete(request.manager)
+      setRefreshPending((value) => value + 1)
     }
+  }
+
+  const runSingle = (request: TaskRequest, label: string): void => {
+    setConfirm(null)
+    if (!window.chief || busyManagers.current.has(request.manager)) return
+
+    if (busyManagers.current.size === 0) setLogs([])
+    setLogsOpen(true)
+    void runTaskForManager(request, label)
   }
 
   const runUpdateAll = async (): Promise<void> => {
     setConfirm(null)
-    if (!window.chief || updateTargets.length === 0) return
+    const targets = availableUpdateTargets
+    if (!window.chief || targets.length === 0) return
 
-    setLogs([])
+    if (busyManagers.current.size === 0) setLogs([])
     setLogsOpen(true)
-    setTask({ label: '全部更新', running: true })
 
-    let allOk = true
-
-    for (const target of updateTargets) {
-      try {
-        const result = await window.chief.task({
-          type: 'update-all',
-          manager: target.manager.id
-        })
-        if (!result.ok) allOk = false
-      } catch (caught) {
-        allOk = false
-        setError(errorText(caught))
-      }
-    }
-
-    setTask({
-      label: '全部更新',
-      running: false,
-      ok: allOk,
-      message: allOk ? '全部更新完成' : '部分管理器更新失败，请查看日志'
-    })
-
-    await refresh(true)
+    await Promise.all(
+      targets.map((target) =>
+        runTaskForManager(
+          { type: 'update-all', manager: target.manager.id },
+          `更新 ${target.manager.name}`
+        )
+      )
+    )
   }
 
   const openUpdateAll = (): void => {
-    if (updateTargets.length === 0) return
+    if (availableUpdateTargets.length === 0) return
 
-    const summary = updateTargets
+    const summary = availableUpdateTargets
       .map(
         (target) =>
           `${target.manager.name}（${target.packages.filter((item) => item.outdated).length} 个）`
@@ -288,7 +354,7 @@ export default function App(): React.JSX.Element {
       title: selectedSnapshot ? `更新 ${selectedSnapshot.manager.name} 的全部包` : '更新全部可更新包',
       body: (
         <>
-          将依次更新：<strong>{summary}</strong>。
+          将并行更新：<strong>{summary}</strong>。
           <br />
           更新可能需要数分钟，期间请保持 Chief 开启。
         </>
@@ -433,7 +499,7 @@ export default function App(): React.JSX.Element {
               type="button"
               className="btn btn-ghost"
               onClick={() => void refresh()}
-              disabled={loading || busy}
+              disabled={loading || anyBusy}
             >
               <RefreshCw size={16} className={loading ? 'spin' : ''} />
               重新扫描
@@ -442,7 +508,7 @@ export default function App(): React.JSX.Element {
               type="button"
               className="btn btn-primary"
               onClick={openUpdateAll}
-              disabled={busy || updateTargets.length === 0}
+              disabled={availableUpdateTargets.length === 0}
             >
               <ArrowUpCircle size={16} />
               {selectedSnapshot ? `更新 ${selectedSnapshot.manager.name}` : '全部更新'}
@@ -709,7 +775,7 @@ export default function App(): React.JSX.Element {
                                     className="icon-btn"
                                     title={item.outdated ? '更新' : '更新到最新'}
                                     aria-label={`更新 ${item.name}`}
-                                    disabled={busy || !canUpdate}
+                                    disabled={isManagerBusy(item.manager) || !canUpdate}
                                     onClick={() => {
                                       void runSingle(
                                         {
@@ -728,7 +794,7 @@ export default function App(): React.JSX.Element {
                                     className="icon-btn danger"
                                     title={item.pinned ? '固定包不可卸载' : '卸载'}
                                     aria-label={`卸载 ${item.name}`}
-                                    disabled={busy || item.pinned}
+                                    disabled={isManagerBusy(item.manager) || item.pinned}
                                     onClick={() => openUninstall(item)}
                                   >
                                     <Trash2 size={16} />
@@ -754,15 +820,30 @@ export default function App(): React.JSX.Element {
             <div className="logs-title">
               <Terminal size={15} />
               <span>运行日志</span>
-              {task?.running && <Loader2 size={14} className="spin" />}
+              {runningTasks.length > 0 && <Loader2 size={14} className="spin" />}
             </div>
             <div className="logs-actions">
-              {task && !task.running && (
-                <span className={`task-result ${task.ok ? 'ok' : 'fail'}`}>
-                  {task.ok ? <Check size={13} /> : <AlertTriangle size={13} />}
-                  {task.message}
+              {runningTasks.length > 0 ? (
+                <span className="task-result running">
+                  <Loader2 size={13} className="spin" />
+                  {runningTasks.map((run) => managerLabel(run.manager)).join('、')} 运行中
                 </span>
-              )}
+              ) : finishedTasks.length > 0 ? (
+                <span
+                  className={`task-result ${finishedTasks.every((run) => run.ok) ? 'ok' : 'fail'}`}
+                >
+                  {finishedTasks.every((run) => run.ok) ? (
+                    <Check size={13} />
+                  ) : (
+                    <AlertTriangle size={13} />
+                  )}
+                  最近：
+                  {finishedTasks
+                    .slice(0, 3)
+                    .map((run) => `${managerLabel(run.manager)} ${run.ok ? '✓' : '✕'}`)
+                    .join(' · ')}
+                </span>
+              ) : null}
               <button
                 type="button"
                 className="icon-btn"
@@ -781,6 +862,7 @@ export default function App(): React.JSX.Element {
               logs.map((line) => (
                 <div key={line.id} className={`log-line is-${line.stream}`}>
                   <span className="log-time">{formatClock(line.at)}</span>
+                  <span className="log-source">{managerLabel(line.manager)}</span>
                   <span className="log-text">{line.text}</span>
                 </div>
               ))

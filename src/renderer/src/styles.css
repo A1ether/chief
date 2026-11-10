@@ -1076,6 +1076,10 @@ code.latest {
   color: var(--red);
 }
 
+.task-result.running {
+  color: var(--accent-2);
+}
+
 .logs-body {
   flex: 1;
   overflow: auto;
@@ -1095,6 +1099,19 @@ code.latest {
 .log-time {
   flex: none;
   color: #4b5462;
+}
+
+.log-source {
+  flex: none;
+  width: 76px;
+  overflow: hidden;
+  color: #9aa3b2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-line.is-system .log-source {
+  color: var(--accent-2);
 }
 
 .log-line.is-stdout .log-text {

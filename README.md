@@ -11,6 +11,7 @@ Chief 自动发现本机的 Homebrew、uv、mise、npm、pnpm、Bun、RubyGems�
 - 自动探测包管理器：Homebrew / uv / mise / npm / pnpm / Bun / RubyGems
 - 统一包列表：当前版本、最新版本、类型、描述
 - 可更新项汇总与按管理器全量更新
+- 不同包管理器可并行更新；同一管理器内任务串行锁定
 - 单包更新 / 卸载，危险操作二次确认
 - 实时流式命令日志
 - 只读扫描默认开启；不使用 `sudo`；命令以参数数组执行，不经过 shell
