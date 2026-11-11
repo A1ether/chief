@@ -4,15 +4,19 @@
 
 Chief 自动发现本机的 Homebrew、uv、mise、npm、pnpm、Bun、RubyGems，把已安装包、可更新项和版本状态收进一个总控台；支持单包更新、单包卸载、按管理器全量更新，并实时展示命令输出。
 
-![status](https://img.shields.io/badge/status-v0.1-orange)
+![status](https://img.shields.io/badge/status-v0.2-orange)
 
 ## 功能
 
 - 自动探测包管理器：Homebrew / uv / mise / npm / pnpm / Bun / RubyGems
+- 多安装识别：同一管理器横跨多个安装（例如多个 node 版本下的 npm）时逐一扫描并标注来源
+- npm 安装筛选：按全局安装目录切换包列表，用 Hermes / Homebrew / mise 等来源标注安装，统计与「更新全部」只作用于所选安装
 - 统一包列表：当前版本、最新版本、类型、描述
+- 来源关系：按可执行文件与全局包目录的位置推断安装链（Homebrew → mise → node → npm）
 - 可更新项汇总与按管理器全量更新
 - 不同包管理器可并行更新；同一管理器内任务串行锁定
 - 单包更新 / 卸载，危险操作二次确认
+- 深色 / 浅色主题一键切换，首次启动跟随系统
 - 实时流式命令日志
 - 只读扫描默认开启；不使用 `sudo`；命令以参数数组执行，不经过 shell
 
