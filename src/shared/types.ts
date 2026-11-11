@@ -114,6 +114,7 @@ export interface TaskResult {
 }
 
 export interface ChiefApi {
+  version(): Promise<string>
   scan(): Promise<ScanResult>
   task(request: TaskRequest): Promise<TaskResult>
   onTaskEvent(listener: (event: TaskEvent) => void): () => void

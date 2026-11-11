@@ -429,6 +429,7 @@ export default function App(): React.JSX.Element {
   const [scan, setScan] = useState<ScanResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [appVersion, setAppVersion] = useState('')
   const [selected, setSelected] = useState<Selection>('all')
   const [installRoot, setInstallRoot] = useState<string>('all')
   const [filter, setFilter] = useState<Filter>('all')
@@ -478,6 +479,14 @@ export default function App(): React.JSX.Element {
     didInit.current = true
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (!window.chief) return
+    void window.chief
+      .version()
+      .then(setAppVersion)
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     if (!window.chief) return
@@ -989,7 +998,7 @@ export default function App(): React.JSX.Element {
             <ExternalLink size={14} />
             项目主页
           </button>
-          <div className="sidebar-version">Chief v0.1.0</div>
+          <div className="sidebar-version">Chief{appVersion ? ` v${appVersion}` : ''}</div>
         </div>
       </aside>
 

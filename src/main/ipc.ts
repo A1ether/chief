@@ -1,9 +1,11 @@
-import { ipcMain, shell } from 'electron'
+import { app, ipcMain, shell } from 'electron'
 import { scanAll } from '../core/scan'
 import { runTask } from '../core/tasks'
 import { ExternalUrlSchema, TaskRequestSchema } from '../shared/schemas'
 
 export function registerIpc(): void {
+  ipcMain.handle('chief:version', async () => app.getVersion())
+
   ipcMain.handle('chief:scan', async () => scanAll())
 
   ipcMain.handle('chief:task', async (event, raw) => {

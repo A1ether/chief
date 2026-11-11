@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { ChiefApi, TaskEvent } from '../shared/types'
 
 const api: ChiefApi = {
+  version: () => ipcRenderer.invoke('chief:version'),
   scan: () => ipcRenderer.invoke('chief:scan'),
   task: (request) => ipcRenderer.invoke('chief:task', request),
   onTaskEvent: (listener) => {
