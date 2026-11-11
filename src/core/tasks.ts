@@ -3,11 +3,15 @@ import type { TaskEvent, TaskRequest, TaskResult, TaskStream } from '../shared/t
 import { getContext } from './env'
 import { streamCommand } from './exec'
 import { getAdapter } from './registry'
-import type { CommandSpec } from './adapters/types'
+import type { CommandSpec, CommandSpecs } from './adapters/types'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   return String(error)
+}
+
+function normalizeSpecs(specs: CommandSpecs): CommandSpec[] {
+  return Array.isArray(specs) ? specs : [specs]
 }
 
 export async function runTask(
@@ -53,12 +57,14 @@ export async function runTask(
     version: probe.version ?? ''
   }
 
-  let spec: CommandSpec
+  let specs: CommandSpec[]
   let label: string
 
   try {
     if (request.type === 'update-all') {
-      spec = adapter.commands.updateAll(runtime)
+      specs = normalizeSpecs(
+        await adapter.commands.updateAll(runtime, ctx, request.installRoot)
+      )
       label = `更新全部 ${adapter.name} 包`
     } else {
       const packages = await adapter.list(ctx, runtime)
@@ -72,9 +78,11 @@ export async function runTask(
         return fail('该包被标记为固定版本，Chief 不会卸载它')
       }
 
-      spec = request.type === 'update'
-        ? adapter.commands.update(pkg, runtime)
-        : adapter.commands.uninstall(pkg, runtime)
+      specs = normalizeSpecs(
+        request.type === 'update'
+          ? await adapter.commands.update(pkg, runtime)
+          : await adapter.commands.uninstall(pkg, runtime)
+      )
 
       label = `${request.type === 'update' ? '更新' : '卸载'} ${pkg.name}`
     }
@@ -82,38 +90,66 @@ export async function runTask(
     return fail(`准备命令失败：${errorMessage(error)}`)
   }
 
-  emitLine('system', `$ ${[spec.command, ...spec.args].join(' ')}`)
+  if (specs.length === 0) {
+    return fail(`${label}失败：没有可执行的命令`)
+  }
 
-  const result = await streamCommand(
-    spec.command,
-    spec.args,
-    ctx.pathEnv,
-    {
-      env: spec.env,
-      timeoutMs: request.type === 'uninstall' ? 120_000 : 15 * 60_000
-    },
-    emitLine
-  )
+  let failures = 0
+  let failureCode: number | null | undefined
+  let timedOut = false
 
-  if (result.timedOut) {
+  for (const spec of specs) {
+    emitLine('system', `$ ${[spec.command, ...spec.args].join(' ')}`)
+
+    const pathEnv = spec.pathPrefix ? `${spec.pathPrefix}:${ctx.pathEnv}` : ctx.pathEnv
+
+    const result = await streamCommand(
+      spec.command,
+      spec.args,
+      pathEnv,
+      {
+        env: spec.env,
+        timeoutMs: request.type === 'uninstall' ? 120_000 : 15 * 60_000
+      },
+      emitLine
+    )
+
+    if (result.timedOut) {
+      timedOut = true
+      failures += 1
+      emitLine('system', '命令超时，已终止')
+      continue
+    }
+
+    if (result.truncated) {
+      emitLine('system', '输出过长，后续内容已截断')
+    }
+
+    if (result.code !== 0) {
+      failures += 1
+      if (failureCode === undefined) failureCode = result.code
+    }
+  }
+
+  if (timedOut) {
     return fail(`${label}超时，命令已终止`)
   }
 
-  if (result.truncated) {
-    emitLine('system', '输出过长，后续内容已截断')
-  }
-
-  const ok = result.code === 0
+  const ok = failures === 0
   const message = ok
-    ? `${label}完成`
-    : `${label}失败（退出码 ${result.code ?? '未知'}）`
+    ? specs.length > 1
+      ? `${label}完成（${specs.length} 条命令）`
+      : `${label}完成`
+    : specs.length > 1
+      ? `${label}失败（${failures}/${specs.length} 条命令未成功）`
+      : `${label}失败（退出码 ${failureCode ?? '未知'}）`
 
   emitLine('system', message)
 
   return {
     taskId,
     ok,
-    exitCode: result.code,
+    exitCode: ok ? 0 : failureCode ?? null,
     message
   }
 }

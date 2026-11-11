@@ -1,5 +1,6 @@
 import type { ManagerInfo, ManagerSnapshot, ScanResult } from '../shared/types'
 import { getContext } from './env'
+import { buildLineage } from './lineage'
 import { ADAPTERS } from './registry'
 import type { PackageManagerAdapter } from './adapters/types'
 
@@ -23,7 +24,9 @@ async function scanOne(
   adapter: PackageManagerAdapter,
   ctx: Awaited<ReturnType<typeof getContext>>
 ): Promise<ManagerSnapshot> {
+  const startedAt = Date.now()
   const scannedAt = new Date().toISOString()
+  const elapsed = (): number => Date.now() - startedAt
   let manager = baseManager(adapter)
 
   try {
@@ -31,7 +34,7 @@ async function scanOne(
     manager = { ...manager, ...probe }
 
     if (!probe.detected || !probe.executablePath) {
-      return { manager, packages: [], scannedAt }
+      return { manager, packages: [], scannedAt, durationMs: elapsed() }
     }
 
     const runtime = {
@@ -55,13 +58,14 @@ async function scanOne(
       })
     }
 
-    return { manager, packages, scannedAt }
+    return { manager, packages, scannedAt, durationMs: elapsed() }
   } catch (error) {
     return {
       manager,
       packages: [],
       error: errorMessage(error),
-      scannedAt
+      scannedAt,
+      durationMs: elapsed()
     }
   }
 }
@@ -72,9 +76,13 @@ export async function scanAll(): Promise<ScanResult> {
 
   const managers = await Promise.all(ADAPTERS.map((adapter) => scanOne(adapter, ctx)))
 
+  // 关系图只是锦上添花，失败不该让整次扫描失败
+  const lineage = await buildLineage(managers, ctx).catch(() => ({ roots: [], edges: 0 }))
+
   return {
     managers,
     scannedAt: new Date().toISOString(),
-    durationMs: Date.now() - startedAt
+    durationMs: Date.now() - startedAt,
+    lineage
   }
 }

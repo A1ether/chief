@@ -12,7 +12,9 @@ export const TaskRequestSchema = z
       .min(1)
       .max(500)
       .regex(SAFE_ARGUMENT, '包名包含不支持的字符')
-      .optional()
+      .optional(),
+    /** 仅用于 update-all：限定在一个全局安装目录内 */
+    installRoot: z.string().min(1).max(1000).optional()
   })
   .refine((value) => value.type === 'update-all' || Boolean(value.packageId), {
     message: '单个包操作必须提供 packageId'

@@ -51,12 +51,38 @@ export interface ManagerSnapshot {
   packages: PackageItem[]
   error?: string
   scannedAt: string
+  /** Wall-clock milliseconds spent probing and listing this manager */
+  durationMs?: number
+}
+
+export type LineageKind = 'manager' | 'runtime' | 'package'
+
+export interface LineageNode {
+  /** Stable rendering key, e.g. manager:npm or pkg:brew:formula:node */
+  id: string
+  kind: LineageKind
+  label: string
+  version?: string
+  /** Set when the node opens a manager detail page */
+  managerId?: ManagerId
+  /** One global installation of that manager (e.g. a specific npm root) */
+  installRoot?: string
+  /** Human hint, e.g. 「54 个包」 or 「由 Homebrew 安装」 */
+  detail?: string
+  children: LineageNode[]
+}
+
+export interface LineageGraph {
+  roots: LineageNode[]
+  edges: number
 }
 
 export interface ScanResult {
   managers: ManagerSnapshot[]
   scannedAt: string
   durationMs: number
+  /** Which manager installs which, inferred from on-disk paths */
+  lineage: LineageGraph
 }
 
 export type TaskType = 'update' | 'uninstall' | 'update-all'
@@ -65,6 +91,8 @@ export interface TaskRequest {
   type: TaskType
   manager: ManagerId
   packageId?: string
+  /** Narrow update-all to a single installation root (currently npm) */
+  installRoot?: string
 }
 
 export type TaskStream = 'stdout' | 'stderr' | 'system'

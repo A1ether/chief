@@ -10,7 +10,12 @@ export interface CommandSpec {
   command: string
   args: string[]
   env?: NodeJS.ProcessEnv
+  /** Prepended to PATH so the command resolves its own node/npm runtime */
+  pathPrefix?: string
 }
+
+/** One command, or several when the manager spans multiple installations */
+export type CommandSpecs = CommandSpec | CommandSpec[]
 
 export interface PackageManagerAdapter {
   id: ManagerId
@@ -29,8 +34,12 @@ export interface PackageManagerAdapter {
     packages: PackageItem[]
   ): Promise<Map<string, string>>
   commands: {
-    update(pkg: PackageItem, runtime: AdapterRuntime): CommandSpec
-    updateAll(runtime: AdapterRuntime): CommandSpec
-    uninstall(pkg: PackageItem, runtime: AdapterRuntime): CommandSpec
+    update(pkg: PackageItem, runtime: AdapterRuntime): CommandSpecs | Promise<CommandSpecs>
+    updateAll(
+      runtime: AdapterRuntime,
+      ctx: CoreContext,
+      installRoot?: string
+    ): CommandSpecs | Promise<CommandSpecs>
+    uninstall(pkg: PackageItem, runtime: AdapterRuntime): CommandSpecs | Promise<CommandSpecs>
   }
 }
